@@ -131,12 +131,12 @@ def plan_path(
     occupancy_grid: np.ndarray,
     start: tuple,
     destination: tuple,
-    cell_size_cm: float = 30.0,
-    drone_clearance_cm: float = 18.0,
+    cell_size_cm: float = 30.0, #change if want more precision 
+    drone_clearance_cm: float = 18.0, #adjust if drone drifts 
     smooth: bool = True,
 ) -> list:
     """
-    Main pipeline function matching the team architecture diagram:
+    Main pipeline function matching the architecture
     Takes (occupancy_grid, start, destination) and returns an ordered list of (row, col) waypoints.
     """
     raw_path, _ = astar(occupancy_grid, start, destination, allow_diagonal=True)
