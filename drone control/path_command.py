@@ -7,14 +7,14 @@ import threading
 import math
 
 # Replace with path planner output
-path = [(0, 0),(-1, 1),(1, 1),(1, 2),(2, 2),(2, 3)]
+path = [(0, 0),(-1, -1),(1, 2),(2, 1),(2, 2),(3, 3)]
 cell_size = 20
-starting_angle = -90
+starting_angle = 90
 
 def generate_commands(path, cell_size, starting_angle):
 
     commands = []
-    angle = starting_angle
+    heading = starting_angle
 
     for i in range(len(path) - 1):
 
@@ -28,9 +28,18 @@ def generate_commands(path, cell_size, starting_angle):
         y_distance = grid_y_change * cell_size
 
         distance = round(math.sqrt(x_distance**2 + y_distance**2))
-        angle = math.degrees(math.atan2(y_distance, x_distance)) - angle
+        angle = math.degrees(math.atan2(y_distance, x_distance))
 
-        commands.append({"distance": distance, "angle": angle})
+        turn = angle - heading
+        heading = angle
+
+        # find the best turn direction (clockwise -, counterclockwise +)
+        if turn > 180:
+            turn = turn - 360
+        elif turn < -180:
+            turn = turn + 360
+
+        commands.append({"distance": distance, "angle": turn})
 
     return commands
 
@@ -62,6 +71,8 @@ class KeepAlive:
         with self.lock:
             self.alive = False
 
+
+# for forward navigation only
 def main():
 
     print("Connecting to Tello...")
@@ -81,13 +92,13 @@ def main():
         angle = round(segment["angle"])
         distance = round(segment["distance"])
 
-        if angle > 0:
+        if angle < 0:
             command = "cw " + str(angle)
             command = command.strip()
             print(command)
             #tello.send_command(command)
 
-        elif angle < 0:
+        elif angle > 0:
             command = "ccw " + str(angle).strip("-")
             print(command)
             #tello.send_command(command)
