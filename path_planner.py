@@ -2,6 +2,7 @@ import heapq
 import math
 import time
 import numpy as np
+#from environment_mapping import generate_occupancy_grid
 
 
 def validate_grid(grid: np.ndarray, start: tuple, goal: tuple) -> None:
