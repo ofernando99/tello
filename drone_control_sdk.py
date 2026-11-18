@@ -6,6 +6,7 @@ import time
 import threading
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 
 from path_planner import plan_path
 # Replace with path occupancy grid output
@@ -181,6 +182,29 @@ def main():
     #         out.write(stat.return_stats())
 
     # print(f"Log saved to {log_filename}")
+
+    #plaot the grid
+    plt.imshow(occupancy_grid[::-1], cmap='binary', vmin=0, vmax=1)
+
+    # Plot the path
+    x = [point[0] for point in path]
+    y = [point[1] for point in path]
+
+    plt.plot(x, y, marker="o")
+
+    plt.scatter(x[0], y[0], color="green", label="Start", s=100)
+
+    plt.scatter(x[-1], y[-1], color="red", label="Destination", s=100)
+
+    plt.gca().invert_yaxis()
+    plt.grid(True)
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.title("Planned Drone Path")
+    plt.legend()
+    plt.axis("equal")
+    
+    plt.show()
 
 if __name__ == "__main__":
     main()
