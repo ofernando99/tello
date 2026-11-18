@@ -8,7 +8,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from path_planner import plan_path
+from path_planning.path_planner import plan_path
 # Replace with path occupancy grid output
 occupancy_grid = np.array([
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
