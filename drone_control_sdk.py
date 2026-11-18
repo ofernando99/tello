@@ -22,8 +22,8 @@ occupancy_grid = np.array([
         [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ])
-start = (0, 0)
-destination = (9, 11)
+start = (0, 0) #(0x,0y)
+destination = (9, 11) #(11x,9y)
 
 path = plan_path(occupancy_grid, start, destination, cell_size_cm=20.0)
 cell_size = 20
@@ -207,25 +207,25 @@ def main():
 
 
 #I ran this code and it worked: 
- """plt.imshow(occupancy_grid, cmap="binary", vmin=0, vmax=1, origin="upper")
+#  """plt.imshow(occupancy_grid, cmap="binary", vmin=0, vmax=1, origin="upper")
 
-    # Plot the path
-    x = [point[1] for point in path]
-    y = [point[0] for point in path]
+#     # Plot the path
+#     x = [point[1] for point in path]
+#     y = [point[0] for point in path]
 
-    plt.plot(x, y, marker="o")
+#     plt.plot(x, y, marker="o")
 
-    plt.scatter(x[0], y[0], color="green", label="Start", s=100)
+#     plt.scatter(x[0], y[0], color="green", label="Start", s=100)
 
-    plt.scatter(x[-1], y[-1], color="red", label="Destination", s=100)
+#     plt.scatter(x[-1], y[-1], color="red", label="Destination", s=100)
 
-    plt.grid(True)
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.title("Planned Drone Path")
-    plt.legend()
+#     plt.grid(True)
+#     plt.xlabel("X")
+#     plt.ylabel("Y")
+#     plt.title("Planned Drone Path")
+#     plt.legend()
     
-    plt.show()"""
+#     plt.show()"""
 
 if __name__ == "__main__":
     main()
