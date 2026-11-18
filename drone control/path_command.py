@@ -88,23 +88,20 @@ class KeepAlive:
         with self.lock:
             self.alive = False
 
-
-# for forward navigation only
 def main():
 
     print("Connecting to Tello...")
     # Initialize Tello
     tello = Tello()
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # # Connection check, enter SDK mode
-    # response = tello.send_command("command")
-    # print("Connection response:", response)
+    # Connection check, enter SDK mode
+    response = tello.send_command("command")
+    print("Connection response:", response)
 
     # Generate route
     route = generate_commands(path, cell_size, starting_angle)
-    print(route)
 
-    #tello.send_command("takeoff")
+    tello.send_command("takeoff")
 
     for segment in route:
 
@@ -117,56 +114,56 @@ def main():
                 command = "cw " + str(abs(angle))
                 command = command.strip()
                 print(command)
-                #tello.send_command(command)
+                tello.send_command(command)
 
             elif angle > 0:
                 command = "ccw " + str(abs(angle))
                 print(command)
-                #tello.send_command(command)
+                tello.send_command(command)
 
             command = "forward " + str(distance)
             print(command)
-            #tello.send_command(command)
+            tello.send_command(command)
 
         elif direction == "l":
             command = "left " + str(distance)
             print(command)
-            #tello.send_command(command)
+            tello.send_command(command)
 
         elif direction == "r":
             command = "right " + str(distance)
             print(command)
-            #tello.send_command(command)
+            tello.send_command(command)
 
         elif direction == "b":
             if angle < 0:
                 command = "cw " + str(abs(angle))
                 command = command.strip()
                 print(command)
-                #tello.send_command(command)
+                tello.send_command(command)
 
             elif angle > 0:
                 command = "ccw " + str(abs(angle))
                 print(command)
-                #tello.send_command(command)
+                tello.send_command(command)
 
             command = "back " + str(distance)
             print(command)
-            #tello.send_command(command)
+            tello.send_command(command)
 
-    #tello.send_command("land")
+    tello.send_command("land")
 
-    # # Save log
-    # log = tello.get_log()
-    # os.makedirs("log", exist_ok=True)
-    # log_filename = f"log/{start_time}.txt"
+    # Save log
+    log = tello.get_log()
+    os.makedirs("log", exist_ok=True)
+    log_filename = f"log/{start_time}.txt"
 
-    # with open(log_filename, "w") as out:
-    #     for stat in log:
-    #         stat.print_stats()
-    #         out.write(stat.return_stats())
+    with open(log_filename, "w") as out:
+        for stat in log:
+            stat.print_stats()
+            out.write(stat.return_stats())
 
-    # print(f"Log saved to {log_filename}")
+    print(f"Log saved to {log_filename}")
 
 if __name__ == "__main__":
     main()
