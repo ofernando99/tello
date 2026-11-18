@@ -27,7 +27,7 @@ def generate_commands(path, cell_size, starting_angle):
         x_distance = grid_x_change * cell_size
         y_distance = grid_y_change * cell_size
 
-        distance = math.sqrt(x_distance**2 + y_distance**2)
+        distance = round(math.sqrt(x_distance**2 + y_distance**2))
         angle = math.degrees(math.atan2(y_distance, x_distance)) - angle
 
         commands.append({"distance": distance, "angle": angle})
