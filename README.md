@@ -3,7 +3,7 @@
 Autonomous navigation and real-time visual object tracking pipeline for the DJI Tello drone using occupancy grid path planning and computer vision.
 
 ## Contributors
-- **Jessie W** (Occupancy Grid Mapping)
+- **Jessie W** (Occupancy Grid Mapping, Benchmarking)
 - **Anna Zarubina** (Path Planning, Algorithms)
 - **Oshanda Fernando** (Drone Control, Navigation)
 - **Ganbat Selenge** (OpenCV, Object Tracking)
