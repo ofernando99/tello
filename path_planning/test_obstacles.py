@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from path_planner import astar, smooth_waypoints_los, waypoints_to_drone_commands
+from path_planning.path_planner import astar, smooth_waypoints_los, waypoints_to_drone_commands
 
 
 def get_test_scenarios() -> list:

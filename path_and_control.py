@@ -1,7 +1,7 @@
 import math
 import matplotlib.pyplot as plt
-from path_planner import plan_path
-from test_obstacles import get_test_scenarios
+from path_planning.path_planner import plan_path
+from path_planning.test_obstacles import get_test_scenarios
 from drone_control_sdk import generate_commands
 
 
