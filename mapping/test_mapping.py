@@ -30,7 +30,7 @@ def run_unit_checks() -> None:
     assert g_json.start == g_img.start and g_json.destination == g_img.destination
 
     # 2. ASCII .txt loader check
-    g_txt = load_map("mapping/maps/example_arena.txt", cell_cm=20, heading="up")
+    g_txt = load_map("mapping/maps/example_arena.txt", cell_cm=20)
     assert g_txt.rows == 15 and g_txt.cols == 25
     assert g_txt.start == (12, 3) and g_txt.destination == (2, 19)
 
@@ -67,7 +67,6 @@ def main() -> None:
     )
     parser.add_argument("--cell-cm", type=float, default=20.0, help="Grid cell size in cm (for .txt/.png/.py)")
     parser.add_argument("--arena-width-cm", type=float, default=500.0, help="Physical arena width in cm (for images)")
-    parser.add_argument("--heading", default="up", help="Initial drone heading (for .txt/.png/.py)")
     parser.add_argument("--margin-cm", type=float, default=0.0, help="Optional obstacle inflation margin in cm")
     args = parser.parse_args()
 
@@ -75,9 +74,9 @@ def main() -> None:
         ext = os.path.splitext(map_path)[1].lower()
         kwargs = {}
         if ext in (".txt", ".py"):
-            kwargs = {"cell_cm": args.cell_cm, "heading": args.heading}
+            kwargs = {"cell_cm": args.cell_cm}
         elif ext in (".png", ".jpg", ".jpeg", ".bmp"):
-            kwargs = {"cell_cm": args.cell_cm, "arena_width_cm": args.arena_width_cm, "heading": args.heading}
+            kwargs = {"cell_cm": args.cell_cm, "arena_width_cm": args.arena_width_cm}
 
         gmap = load_map(map_path, **kwargs)
         if args.margin_cm > 0:

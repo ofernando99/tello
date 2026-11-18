@@ -2,7 +2,6 @@
 Author: Jessie Wang
 
 Occupancy mapping:
-
 Turns the 2D drawing into a grid of free (0) / occupied (1) cells.
 
 Supported inputs
@@ -24,20 +23,12 @@ from dataclasses import dataclass, field
 
 Cell = tuple[int, int]  # (row, col)
 
-# Heading the drone faces at take-off, expressed as a unit vector in map frame.
-HEADINGS = {
-    "up": (0, -1), "down": (0, 1), "left": (-1, 0), "right": (1, 0),
-    "north": (0, -1), "south": (0, 1), "west": (-1, 0), "east": (1, 0),
-}
-
-
 @dataclass
 class GridMap:
     grid: list[list[int]]
     cell_cm: float
     start: Cell
-    goal: Cell
-    heading: str = "up"                # direction drone faces at start (map frame)
+    destination: Cell
     raw: list[list[int]] | None = field(default=None, repr=False)  # pre-inflation
 
     @property
@@ -47,11 +38,6 @@ class GridMap:
     @property
     def cols(self) -> int:
         return len(self.grid[0])
-
-    @property
-    def destination(self) -> Cell:
-        """Alias for ``goal`` matching the project brief terminology."""
-        return self.goal
 
     @property
     def occupancy_grid(self):
@@ -66,28 +52,24 @@ class GridMap:
         start: Cell,
         destination: Cell,
         cell_cm: float = 20,
-        heading: str = "up",
     ) -> "GridMap":
         """Construct a ``GridMap`` directly from a 2D NumPy array (or nested list),
         ``start`` cell ``(row, col)``, and ``destination`` cell ``(row, col)``."""
-        return load_array(occupancy_grid, start, destination, cell_cm=cell_cm, heading=heading)
+        return load_array(occupancy_grid, start, destination, cell_cm=cell_cm)
 
-    def to_numpy_tuple(self, use_raw: bool = False):
+    def to_numpy_tuple(self):
         """Return ``(occupancy_grid, start, destination)`` where ``occupancy_grid``
         is a 2D ``np.ndarray`` of 0s and 1s."""
-        import numpy as np
-        source_grid = (self.raw or self.grid) if use_raw else self.grid
-        return np.array(source_grid, dtype=int), self.start, self.destination
+        return self.occupancy_grid, self.start, self.destination
 
     def __iter__(self):
         """Allow unpacking directly: ``occupancy_grid, start, destination = load_map(...)``."""
         return iter(self.to_numpy_tuple())
 
-    def to_python_code(self, use_raw: bool = False) -> str:
+    def to_python_code(self) -> str:
         """Format the map as an executable Python snippet defining
         ``occupancy_grid = np.array([...])``, ``start``, and ``destination``."""
-        source_grid = (self.raw or self.grid) if use_raw else self.grid
-        row_strings = ["        [" + ", ".join(str(val) for val in row) + "]," for row in source_grid]
+        row_strings = ["        [" + ", ".join(str(val) for val in row) + "]," for row in self.grid]
         lines = [
             "occupancy_grid = np.array([",
             *row_strings,
@@ -102,15 +84,6 @@ class GridMap:
         row, col = cell
         return 0 <= row < self.rows and 0 <= col < self.cols
 
-    def is_free(self, cell: Cell) -> bool:
-        """Return True if ``cell`` is inside the grid and not occupied (0)."""
-        return self.in_bounds(cell) and self.grid[cell[0]][cell[1]] == 0
-
-    def cell_to_cm(self, cell: Cell) -> tuple[float, float]:
-        """Centre of a cell in map-frame cm (x right, y down)."""
-        row, col = cell
-        return ((col + 0.5) * self.cell_cm, (row + 0.5) * self.cell_cm)
-
     # ------------------------------------------------------------------ #
     def inflate(self, margin_cm: float, include_walls: bool = True) -> "GridMap":
         """Grow obstacles by ``margin_cm`` so the planner keeps a safe distance
@@ -121,14 +94,13 @@ class GridMap:
         self._expand_obstacles(inflated_grid, radius_cells)
         if include_walls and radius_cells > 0:
             self._inflate_arena_walls(inflated_grid, radius_cells)
-        self._clear_start_and_goal(inflated_grid)
+        self._clear_start_and_destination(inflated_grid)
 
         return GridMap(
             inflated_grid,
             self.cell_cm,
             self.start,
-            self.goal,
-            self.heading,
+            self.destination,
             raw=self.grid,
         )
 
@@ -151,9 +123,9 @@ class GridMap:
     def _inflate_arena_walls(self, inflated_grid: list[list[int]], radius_cells: int) -> None:
         """Pad the outer boundary of the arena with a keep-out margin so the
         drone maintains clearance from surrounding walls or safety nets.
-        Skipped if start or goal lies on the outer border (e.g. pre-discretized grids)."""
+        Skipped if start or destination lies on the outer border (e.g. pre-discretized grids)."""
         wall_margin_cells = max(1, radius_cells - 1)  # walls/nets: slightly smaller margin
-        for row, col in (self.start, self.goal):
+        for row, col in (self.start, self.destination):
             if (
                 row < wall_margin_cells
                 or row >= self.rows - wall_margin_cells
@@ -168,12 +140,12 @@ class GridMap:
                 if near_top_or_bottom or near_left_or_right:
                     inflated_grid[row][col] = 1
 
-    def _clear_start_and_goal(self, inflated_grid: list[list[int]]) -> None:
-        """Verify that start and goal do not lie inside actual obstacles, and
+    def _clear_start_and_destination(self, inflated_grid: list[list[int]]) -> None:
+        """Verify that start and destination do not lie inside actual obstacles, and
         ensure safety-margin inflation never blocks the drone from starting or landing."""
-        for row, col in (self.start, self.goal):
+        for row, col in (self.start, self.destination):
             if self.grid[row][col] == 1:
-                raise ValueError(f"start/goal {(row, col)} lies inside an obstacle")
+                raise ValueError(f"start/destination {(row, col)} lies inside an obstacle")
             inflated_grid[row][col] = 0
 
     def to_ascii(self, path: list[Cell] | None = None) -> str:
@@ -187,14 +159,14 @@ class GridMap:
                 cell = (row, col)
                 if cell == self.start:
                     symbol = "S"
-                elif cell == self.goal:
+                elif cell == self.destination:
                     symbol = "G"
                 elif cell in path_cells:
                     symbol = "*"
                 elif raw_grid[row][col] == 1:
                     symbol = "#"
                 elif self.grid[row][col] == 1:
-                    symbol = "+" # free in reality, blocked by safety margin
+                    symbol = "+"  # free in reality, blocked by safety margin
                 else:
                     symbol = "."
                 row_symbols.append(symbol)
@@ -224,7 +196,6 @@ def load_array(
     start: Cell,
     destination: Cell,
     cell_cm: float = 20,
-    heading: str = "up",
 ) -> GridMap:
     """Construct a ``GridMap`` from a 2D ``np.ndarray`` (or nested list) of 0s and 1s,
     ``start = (row, col)``, and ``destination = (row, col)``."""
@@ -234,20 +205,20 @@ def load_array(
         raw_rows = occupancy_grid
     grid = [[1 if int(val) != 0 else 0 for val in row] for row in raw_rows]
     start_cell = (int(start[0]), int(start[1]))
-    goal_cell = (int(destination[0]), int(destination[1]))
-    return GridMap(grid, float(cell_cm), start_cell, goal_cell, heading)
+    dest_cell = (int(destination[0]), int(destination[1]))
+    return GridMap(grid, float(cell_cm), start_cell, dest_cell)
 
 
-def load_python(path: str, cell_cm: float = 20, heading: str = "up") -> GridMap:
+def load_python(path: str, cell_cm: float = 20) -> GridMap:
     """Load a ``GridMap`` from a Python file defining ``occupancy_grid`` (or ``grid``),
     ``start = (row, col)``, and ``destination = (row, col)`` (or ``goal``)."""
+    import textwrap
     import numpy as np
 
     namespace: dict = {"np": np}
     with open(path) as file:
         source = file.read()
     # Dedent in case the file contains an indented snippet
-    import textwrap
     exec(compile(textwrap.dedent(source), path, "exec"), namespace)
     occupancy_grid = namespace.get("occupancy_grid")
     if occupancy_grid is None:
@@ -263,13 +234,12 @@ def load_python(path: str, cell_cm: float = 20, heading: str = "up") -> GridMap:
         start,
         destination,
         cell_cm=namespace.get("cell_cm", cell_cm),
-        heading=namespace.get("heading", heading),
     )
 
 
-def load_ascii(path: str, cell_cm: float = 20, heading: str = "up") -> GridMap:
+def load_ascii(path: str, cell_cm: float = 20) -> GridMap:
     """Load an occupancy grid from a hand-drawn ASCII text file."""
-    grid, start, goal = [], None, None
+    grid, start, destination = [], None, None
     with open(path) as file:
         raw_lines = [line.rstrip("\n") for line in file if line.strip() and not line.startswith(";")]
     for row_idx, line in enumerate(raw_lines):
@@ -282,13 +252,13 @@ def load_ascii(path: str, cell_cm: float = 20, heading: str = "up") -> GridMap:
                 if char == "S":
                     start = (row_idx, col_idx)
                 elif char == "G":
-                    goal = (row_idx, col_idx)
+                    destination = (row_idx, col_idx)
         grid.append(grid_row)
-    if start is None or goal is None:
+    if start is None or destination is None:
         raise ValueError("ASCII map needs one 'S' and one 'G'")
     max_cols = max(len(grid_row) for grid_row in grid)
     grid = [grid_row + [1] * (max_cols - len(grid_row)) for grid_row in grid]
-    return GridMap(grid, cell_cm, start, goal, heading)
+    return GridMap(grid, cell_cm, start, destination)
 
 
 def init_grid(
@@ -353,7 +323,6 @@ def load_json(path: str) -> GridMap:
           "cell_cm": 20,
           "origin": "top-left",            # or "bottom-left"
           "start": [60, 240], "goal": [340, 60],      # cm
-          "start_heading": "up",
           "obstacles": [
              {"type": "rect", "x": 120, "y": 0, "w": 40, "h": 180},
              {"type": "circle", "x": 260, "y": 180, "r": 30}
@@ -363,13 +332,12 @@ def load_json(path: str) -> GridMap:
     with open(path) as file:
         spec = json.load(file)
     cell_cm = float(spec.get("cell_cm", 20))
-    heading = spec.get("start_heading", spec.get("heading", "up"))
+    destination = spec.get("destination") or spec.get("goal")
 
     # Support direct discrete occupancy_grid in JSON as well as geometric arena_cm specs
     if "occupancy_grid" in spec or "grid" in spec:
         raw_grid = spec.get("occupancy_grid") or spec.get("grid")
-        destination = spec.get("destination") or spec.get("goal")
-        return load_array(raw_grid, tuple(spec["start"]), tuple(destination), cell_cm=cell_cm, heading=heading)
+        return load_array(raw_grid, tuple(spec["start"]), tuple(destination), cell_cm=cell_cm)
 
     arena_width_cm, arena_height_cm = spec["arena_cm"]
     flip_y_axis = spec.get("origin", "top-left") == "bottom-left"
@@ -388,14 +356,12 @@ def load_json(path: str) -> GridMap:
         grid,
         cell_cm,
         cm_to_cell(spec["start"]),
-        cm_to_cell(spec["goal"]),
-        spec.get("start_heading", "up"),
+        cm_to_cell(destination),
     )
 
 
 def load_image(path: str, cell_cm: float = 20, arena_width_cm: float = 400,
-               start_px=None, goal_px=None, heading: str = "up",
-               dark_threshold: int = 100) -> GridMap:
+               start_px=None, goal_px=None, dark_threshold: int = 100) -> GridMap:
     """Scanned drawing -> grid. Dark ink = obstacle. Start/goal are found as
     green / red blobs, or passed in pixel coordinates."""
     import cv2
@@ -443,4 +409,4 @@ def load_image(path: str, cell_cm: float = 20, arena_width_cm: float = 400,
             min(cols - 1, int(point_px[0] // cell_size_px)),
         )
 
-    return GridMap(grid, cell_cm, px_to_cell(start_px), px_to_cell(goal_px), heading)
+    return GridMap(grid, cell_cm, px_to_cell(start_px), px_to_cell(goal_px))
