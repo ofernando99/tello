@@ -7,7 +7,7 @@ import threading
 import math
 
 # Replace with path planner output
-path = [(0, 0),(-1, -1),(1, 2),(2, 1),(2, 2),(3, 3)]
+path = [(0, 0),(1, 1),(1, 2),(2, 1),(2, 2),(3, 3)]
 cell_size = 20
 starting_angle = 90
 
@@ -28,7 +28,7 @@ def generate_commands(path, cell_size, starting_angle):
         y_distance = grid_y_change * cell_size
 
         distance = round(math.sqrt(x_distance**2 + y_distance**2))
-        angle = math.degrees(math.atan2(y_distance, x_distance))
+        angle = round(math.degrees(math.atan2(y_distance, x_distance)))
 
         turn = angle - heading
         heading = angle
@@ -79,33 +79,48 @@ def main():
     # Initialize Tello
     tello = Tello()
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # Connection check only; no flight commands
+    # # Connection check, enter SDK mode
     # response = tello.send_command("command")
     # print("Connection response:", response)
 
     # Generate route
     route = generate_commands(path, cell_size, starting_angle)
-    print(route)
+
+    #tello.send_command("takeoff")
 
     for segment in route:
 
-        angle = round(segment["angle"])
-        distance = round(segment["distance"])
+        angle = segment["angle"]
+        distance = segment["distance"]
 
         if angle < 0:
-            command = "cw " + str(angle)
+            command = "cw " + str(abs(angle))
             command = command.strip()
             print(command)
             #tello.send_command(command)
 
         elif angle > 0:
-            command = "ccw " + str(angle).strip("-")
+            command = "ccw " + str(abs(angle))
             print(command)
             #tello.send_command(command)
 
         command = "forward " + str(distance)
         print(command)
         #tello.send_command(command)
+
+    #tello.send_command("land")
+
+    # # Save log
+    # log = tello.get_log()
+    # os.makedirs("log", exist_ok=True)
+    # log_filename = f"log/{start_time}.txt"
+
+    # with open(log_filename, "w") as out:
+    #     for stat in log:
+    #         stat.print_stats()
+    #         out.write(stat.return_stats())
+
+    # print(f"Log saved to {log_filename}")
 
 if __name__ == "__main__":
     main()
