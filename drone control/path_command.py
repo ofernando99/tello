@@ -6,7 +6,7 @@ import time
 import threading
 import math
 
-# Replace with your path planner output
+# Replace with path planner output
 path = [(0, 0),(-1, 1),(1, 1),(1, 2),(2, 2),(2, 3)]
 cell_size = 20
 starting_angle = -90
