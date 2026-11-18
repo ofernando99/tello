@@ -187,12 +187,12 @@ def main():
     plt.imshow(occupancy_grid[::-1], cmap='binary', vmin=0, vmax=1)
 
     # Plot the path
-    x = [point[0] for point in path]
-    y = [point[1] for point in path]
+    x = [point[0] for point in path]#Here should be point[1]
+    y = [point[1] for point in path]#and here point[0]
 
     plt.plot(x, y, marker="o")
 
-    plt.scatter(x[0], y[0], color="green", label="Start", s=100)
+    plt.scatter(x[0], y[0], color="green", label="Start", s=100) 
 
     plt.scatter(x[-1], y[-1], color="red", label="Destination", s=100)
 
@@ -203,8 +203,29 @@ def main():
     plt.title("Planned Drone Path")
     plt.legend()
     plt.axis("equal")
-    
     plt.show()
+
+
+#I ran this code and it worked: 
+ """plt.imshow(occupancy_grid, cmap="binary", vmin=0, vmax=1, origin="upper")
+
+    # Plot the path
+    x = [point[1] for point in path]
+    y = [point[0] for point in path]
+
+    plt.plot(x, y, marker="o")
+
+    plt.scatter(x[0], y[0], color="green", label="Start", s=100)
+
+    plt.scatter(x[-1], y[-1], color="red", label="Destination", s=100)
+
+    plt.grid(True)
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.title("Planned Drone Path")
+    plt.legend()
+    
+    plt.show()"""
 
 if __name__ == "__main__":
     main()
