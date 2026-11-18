@@ -19,7 +19,7 @@ from dataclasses import dataclass
 sys.path[0] = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from mapping.mapping import load_json  # noqa: E402
-from path_planner import astar  # noqa: E402
+from path_planning.path_planner import astar  # noqa: E402
 
 DEFAULT_SAFETY_MARGIN_CM = 30.0
 
