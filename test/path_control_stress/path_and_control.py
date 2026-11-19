@@ -72,7 +72,7 @@ def run_teammate_stress_test(cell_size_cm: float = 20.0, starting_angle: float =
 
     axes_flat[0].legend(loc="lower left", fontsize=8)
     plt.tight_layout()
-    plt.savefig(Path(__file__).resolve().parent/"path_control_stress_test.png", dpi=200)
+    plt.savefig(Path(__file__).resolve().parent/"results/path_control_stress_test.png", dpi=200)
     plt.show()
 
 

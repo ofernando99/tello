@@ -411,7 +411,7 @@ def plot_comparison(grid: np.ndarray, results: dict, start: tuple, goal: tuple):
 
     axes_flat[0].legend(loc="lower left", fontsize=8)
     plt.tight_layout()
-    plt.savefig(Path(__file__).resolve().parent/"algorithm_comparison.png", dpi=200)
+    plt.savefig(Path(__file__).resolve().parent/"results/algorithm_comparison.png", dpi=200)
     plt.show()
 
 
