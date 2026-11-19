@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from path_planning.path_planner import plan_path
 from path_planning.test_obstacles import get_test_scenarios
 from drone_control_sdk import generate_commands
+from pathlib import Path
 
 
 def simulate_teammate_commands(route: list, start: tuple, cell_size: float, starting_angle: float = 90.0) -> list:
@@ -67,7 +68,7 @@ def run_teammate_stress_test(cell_size_cm: float = 20.0, starting_angle: float =
 
     axes_flat[0].legend(loc="lower left", fontsize=8)
     plt.tight_layout()
-    plt.savefig("path_control_stress_test.png", dpi=200)
+    plt.savefig(Path(__file__).resolve().parent/"results/path_control_stress_test.png", dpi=200)
     plt.show()
 
 

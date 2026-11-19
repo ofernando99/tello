@@ -1,7 +1,8 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from path_planning.path_planner import astar, smooth_waypoints_los, waypoints_to_drone_commands
+from path_planner import astar, smooth_waypoints_los, waypoints_to_drone_commands
+from pathlib import Path
 
 
 def get_test_scenarios() -> list:
@@ -89,7 +90,7 @@ def run_obstacle_stress_test(cell_size_cm: float = 30.0, drone_clearance_cm: flo
 
     axes_flat[0].legend(loc="lower left", fontsize=8)
     plt.tight_layout()
-    plt.savefig("obstacle_stress_test.png", dpi=200)
+    plt.savefig(Path(__file__).resolve().parent/"obstacle_stress_test.png", dpi=200)
     plt.show()
 
 

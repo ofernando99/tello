@@ -4,6 +4,7 @@ import random
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 
 def validate_grid(grid: np.ndarray, start: tuple, goal: tuple) -> None:
@@ -410,7 +411,7 @@ def plot_comparison(grid: np.ndarray, results: dict, start: tuple, goal: tuple):
 
     axes_flat[0].legend(loc="lower left", fontsize=8)
     plt.tight_layout()
-    plt.savefig("algorithm_comparison.png", dpi=200)
+    plt.savefig(Path(__file__).resolve().parent/"algorithm_comparison.png", dpi=200)
     plt.show()
 
 
