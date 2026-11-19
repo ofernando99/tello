@@ -1,5 +1,3 @@
-from drone_control.tello import Tello
-from datetime import datetime
 import time
 import os
 import time
@@ -7,9 +5,11 @@ import threading
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 
-from path_planning.path_planner_xy import plan_path
 from mapping.mapping import load_map
+from path_planning.path_planner_xy import plan_path
+from drone_control.tello import Tello
 
 occupancy_grid, start, destination = load_map("mapping/maps/example_arena.png")
 
