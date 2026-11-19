@@ -6,12 +6,12 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from path_planning.path_planner import plan_path
 from path_planning.test_obstacles import get_test_scenarios
-from drone_control_sdk import generate_commands
+from drone_control_sdk import generate_instructions
 
 
 
 def simulate_teammate_commands(route: list, start: tuple, cell_size: float, starting_angle: float = 90.0) -> list:
-    """Reconstruct the physical (row, col) trajectory produced by drone_control_sdk.generate_commands()."""
+    """Reconstruct the physical (row, col) trajectory produced by drone_control_sdk.generate_instructions()."""
     heading = starting_angle
     r, c = float(start[0]), float(start[1])
     sim_path = [(r, c)]
@@ -47,7 +47,7 @@ def run_teammate_stress_test(cell_size_cm: float = 20.0, starting_angle: float =
 
     for ax, (title, grid, start, goal) in zip(axes_flat, scenarios):
         waypoints = plan_path(grid, start, goal, cell_size_cm=cell_size_cm)
-        route = generate_commands(waypoints, cell_size=cell_size_cm, starting_angle=starting_angle)
+        route = generate_instructions(waypoints, cell_size=cell_size_cm, starting_angle=starting_angle)
         sim_path = simulate_teammate_commands(route, start, cell_size=cell_size_cm, starting_angle=starting_angle)
 
         print(f"\n=== {title} ===")

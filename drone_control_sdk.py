@@ -11,45 +11,7 @@ from mapping.mapping import load_map
 from path_planning.path_planner_xy import plan_path
 from drone_control.tello import Tello
 
-# occupancy_grid, start, destination = load_map("mapping/maps/example_arena.png")
-occupancy_grid, start, destination = load_map(input("Enter map path : "))
-
-# occupancy_grid = np.array([
-#     [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-#     [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-#     [0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
-#     [1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1],
-#     [1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1],
-#     [1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1],
-#     [1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1],
-#     [1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
-#     [1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
-#     [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-#     [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1],
-#     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1],
-#     [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1],
-#     [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1],
-#     [1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-#     [1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-#     [1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-#     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]
-# ])
-
-# start = (1, 1)
-# destination = (16, 20)
-
-# converting back to x y coordinates
-rows, cols = occupancy_grid.shape
-start = (start[1] , rows - 1 - start[0])
-destination = (destination[1] , rows - 1 - destination[0])
-
-print(occupancy_grid)
-
-path = plan_path(occupancy_grid, start, destination, cell_size_cm=20.0)
-cell_size = 20
-starting_angle = 90
-
-def generate_commands(path, cell_size, starting_angle):
+def generate_instructions(path, cell_size, starting_angle):
 
     commands = []
     heading = starting_angle
@@ -98,6 +60,76 @@ def generate_commands(path, cell_size, starting_angle):
 
     return commands
 
+def generate_commands(route):
+
+    commands = []
+
+    for segment in route:
+
+        angle = segment["angle"]
+        distance = segment["distance"]
+        direction = segment["direction"]
+
+        if direction == "f":
+            if angle < 0:
+                command = "cw " + str(abs(angle))
+                command = command.strip()
+                commands.append(command)
+
+            elif angle > 0:
+                command = "ccw " + str(abs(angle))
+                commands.append(command)
+
+            command = "forward " + str(distance)
+            commands.append(command)
+
+        elif direction == "l":
+            command = "left " + str(distance)
+            commands.append(command)
+
+        elif direction == "r":
+            command = "right " + str(distance)
+            commands.append(command)
+
+        elif direction == "b":
+            if angle < 0:
+                command = "cw " + str(abs(angle))
+                command = command.strip()
+                commands.append(command)
+
+            elif angle > 0:
+                command = "ccw " + str(abs(angle))
+                commands.append(command)
+
+            command = "back " + str(distance)
+            commands.append(command)
+
+    return commands
+
+def plot_path(occupancy_grid, path):
+
+    #plot the grid
+    plt.imshow(occupancy_grid[::-1], cmap='binary', vmin=0, vmax=1)
+
+    # Plot the path
+    x = [point[0] for point in path]
+    y = [point[1] for point in path]
+
+    plt.plot(x, y, marker="o")
+
+    plt.scatter(x[0], y[0], color="green", label="Start", s=100) 
+
+    plt.scatter(x[-1], y[-1], color="red", label="Destination", s=100)
+
+    plt.gca().invert_yaxis()
+    plt.grid(True)
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.title("Planned Drone Path")
+    plt.legend()
+    plt.axis("equal")
+    plt.show()
+
 class KeepAlive:
     def __init__(self, tello):
         self.alive = True
@@ -128,68 +160,69 @@ class KeepAlive:
 
 def main():
 
+    starting_angle = 90
+    cell_size = 20
+
+    # occupancy_grid = np.array([
+    #     [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    #     [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+    #     [0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
+    #     [1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1],
+    #     [1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1],
+    #     [1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1],
+    #     [1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1],
+    #     [1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
+    #     [1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    #     [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+    #     [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1],
+    #     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1],
+    #     [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+    #     [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1],
+    #     [1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+    #     [1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+    #     [1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+    #     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]
+    # ])
+
+    # start = (1, 1)
+    # destination = (16, 20)
+
+    #load map
+    occupancy_grid, start, destination = load_map(input("Enter map path : "))
+    # converting back to x y coordinates
+    rows, cols = occupancy_grid.shape
+    start = (start[1] , rows - 1 - start[0])
+    destination = (destination[1] , rows - 1 - destination[0])
+    #plan path
+    path = plan_path(occupancy_grid, start, destination, cell_size_cm=20.0)
+
+    # Generate route
+    route = generate_instructions(path, cell_size, starting_angle)
+    print(route)
+    # Generate sdk commands
+    commands = generate_commands(route)
+
+    #add takeoff and land
+    commands.insert(0, "takeoff")
+    commands.append("land")
+    #print commands
+    print("-------Command sequence-------")
+    for command in commands: print(command)
+    #plot path
+    plot_path(occupancy_grid, path)
+
     print("Connecting to Tello...")
     # Initialize Tello
     tello = Tello()
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # Connection check, enter SDK mode
+    ## Connection check, enter SDK mode
     # response = tello.send_command("command")
     # print("Connection response:", response)
 
-    # Generate route
-    route = generate_commands(path, cell_size, starting_angle)
-
-    #tello.send_command("takeoff")
-
-    for segment in route:
-
-        angle = segment["angle"]
-        distance = segment["distance"]
-        direction = segment["direction"]
-
-        if direction == "f":
-            if angle < 0:
-                command = "cw " + str(abs(angle))
-                command = command.strip()
-                print(command)
-                #tello.send_command(command)
-
-            elif angle > 0:
-                command = "ccw " + str(abs(angle))
-                print(command)
-                #tello.send_command(command)
-
-            command = "forward " + str(distance)
-            print(command)
-            #tello.send_command(command)
-
-        elif direction == "l":
-            command = "left " + str(distance)
-            print(command)
-            #tello.send_command(command)
-
-        elif direction == "r":
-            command = "right " + str(distance)
-            print(command)
-            #tello.send_command(command)
-
-        elif direction == "b":
-            if angle < 0:
-                command = "cw " + str(abs(angle))
-                command = command.strip()
-                print(command)
-                #tello.send_command(command)
-
-            elif angle > 0:
-                command = "ccw " + str(abs(angle))
-                print(command)
-                #tello.send_command(command)
-
-            command = "back " + str(distance)
-            print(command)
-            #tello.send_command(command)
-
-    #tello.send_command("land")
+    for command in commands:
+        print("Sending command......")
+        print(command)
+        #tello.send_command(command)
 
     # # Save log
     # log = tello.get_log()
@@ -202,28 +235,6 @@ def main():
     #         out.write(stat.return_stats())
 
     # print(f"Log saved to {log_filename}")
-
-    #plaot the grid
-    plt.imshow(occupancy_grid[::-1], cmap='binary', vmin=0, vmax=1)
-
-    # Plot the path
-    x = [point[0] for point in path]#Here should be point[1]
-    y = [point[1] for point in path]#and here point[0]
-
-    plt.plot(x, y, marker="o")
-
-    plt.scatter(x[0], y[0], color="green", label="Start", s=100) 
-
-    plt.scatter(x[-1], y[-1], color="red", label="Destination", s=100)
-
-    plt.gca().invert_yaxis()
-    plt.grid(True)
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.title("Planned Drone Path")
-    plt.legend()
-    plt.axis("equal")
-    plt.show()
 
 if __name__ == "__main__":
     main()
