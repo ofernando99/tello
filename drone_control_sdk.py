@@ -8,7 +8,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from path_planning.path_planner import plan_path
+from path_planner_xy import plan_path
 # Replace with path occupancy grid output
 occupancy_grid = np.array([
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -23,7 +23,7 @@ occupancy_grid = np.array([
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ])
 start = (0, 0) #(0x,0y)
-destination = (9, 11) #(11x,9y)
+destination = (11, 9) #(11x,9y)
 
 path = plan_path(occupancy_grid, start, destination, cell_size_cm=20.0)
 cell_size = 20
@@ -204,28 +204,6 @@ def main():
     plt.legend()
     plt.axis("equal")
     plt.show()
-
-
-#I ran this code and it worked: 
-#  """plt.imshow(occupancy_grid, cmap="binary", vmin=0, vmax=1, origin="upper")
-
-#     # Plot the path
-#     x = [point[1] for point in path]
-#     y = [point[0] for point in path]
-
-#     plt.plot(x, y, marker="o")
-
-#     plt.scatter(x[0], y[0], color="green", label="Start", s=100)
-
-#     plt.scatter(x[-1], y[-1], color="red", label="Destination", s=100)
-
-#     plt.grid(True)
-#     plt.xlabel("X")
-#     plt.ylabel("Y")
-#     plt.title("Planned Drone Path")
-#     plt.legend()
-    
-#     plt.show()"""
 
 if __name__ == "__main__":
     main()
