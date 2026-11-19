@@ -8,22 +8,15 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from path_planner_xy import plan_path
-# Replace with path occupancy grid output
-occupancy_grid = np.array([
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
-        [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-        [0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    ])
-start = (0, 0) #(0x,0y)
-destination = (11, 9) #(11x,9y)
+from path_planning.path_planner_xy import plan_path
+from mapping.mapping import load_map
+
+occupancy_grid, start, destination = load_map("mapping/maps/example_arena.png")
+
+# converting back to x y coordinates
+rows, cols = occupancy_grid.shape
+start = (start[1] , rows - 1 - start[0])
+destination = (destination[1] , rows - 1 - destination[0])
 
 path = plan_path(occupancy_grid, start, destination, cell_size_cm=20.0)
 cell_size = 20

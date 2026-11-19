@@ -4,9 +4,9 @@ import time
 import numpy as np
 #from environment_mapping import generate_occupancy_grid
 
-#==================================================================#
-#some parts were modified to map occupancy grid into x y corrdinates
-#==================================================================#
+#=======================================================================================================================#
+#some parts were modified to map occupancy grid into x y corrdinates original version in path_planning/path_planner.py
+#=======================================================================================================================#
 
 def validate_grid(grid: np.ndarray, start: tuple, goal: tuple) -> None:
     """Verify the occupancy grid and start/destination coordinates are valid."""
