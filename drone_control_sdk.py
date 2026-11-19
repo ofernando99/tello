@@ -13,7 +13,7 @@ from drone_control.tello import Tello
 
 def generate_instructions(path, cell_size, starting_angle):
 
-    commands = []
+    instructions = []
     heading = starting_angle
 
     for i in range(len(path) - 1):
@@ -56,9 +56,9 @@ def generate_instructions(path, cell_size, starting_angle):
             turn = turn + 180 if turn < -90 else turn - 180
             heading = angle + 180 if angle < 0 else angle - 180
         
-        commands.append({"distance": distance, "angle": turn, "direction": direction})
+        instructions.append({"distance": distance, "angle": turn, "direction": direction})
 
-    return commands
+    return instructions
 
 def generate_commands(route):
 
