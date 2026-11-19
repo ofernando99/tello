@@ -360,8 +360,16 @@ def load_json(path: str) -> GridMap:
     )
 
 
-def load_image(path: str, cell_cm: float = 20, arena_width_cm: float = 400,
-               start_px=None, goal_px=None, dark_threshold: int = 100) -> GridMap:
+def load_image(
+    path: str,
+    cell_cm: float = 20,
+    arena_width_cm: float = 500,
+    start_px=None,
+    goal_px=None,
+    dark_threshold: int = 100,
+    obstacle_ratio_threshold: float = 0.35,
+    min_grid_size: int = 20,
+) -> GridMap:
     """Scanned drawing -> grid. Dark ink = obstacle. Start/goal are found as
     green / red blobs, or passed in pixel coordinates."""
     import cv2
@@ -394,13 +402,19 @@ def load_image(path: str, cell_cm: float = 20, arena_width_cm: float = 400,
     # Dark AND unsaturated pixels count as walls (so coloured start/goal blobs are ignored)
     obstacle_mask = ((gray_img < dark_threshold) & (hsv_img[:, :, 1] < 80)).astype(np.uint8)
     cell_size_px = cell_cm / cm_per_px
+    if min_grid_size > 0:
+        max_cell_size_px = min(img_width_px, img_height_px) / float(min_grid_size)
+        if cell_size_px > max_cell_size_px:
+            cell_size_px = max_cell_size_px
+            cell_cm = cell_size_px * cm_per_px
+
     grid, rows, cols = init_grid(img_width_px, img_height_px, cell_size_px)
     for row in range(rows):
         for col in range(cols):
             y0_px, y1_px = int(row * cell_size_px), int((row + 1) * cell_size_px)
             x0_px, x1_px = int(col * cell_size_px), int((col + 1) * cell_size_px)
             cell_patch = obstacle_mask[y0_px:y1_px, x0_px:x1_px]
-            if cell_patch.size and cell_patch.mean() > 0.05:
+            if cell_patch.size and cell_patch.mean() > obstacle_ratio_threshold:
                 grid[row][col] = 1
 
     def px_to_cell(point_px: tuple[float, float]) -> Cell:
@@ -409,4 +423,9 @@ def load_image(path: str, cell_cm: float = 20, arena_width_cm: float = 400,
             min(cols - 1, int(point_px[0] // cell_size_px)),
         )
 
-    return GridMap(grid, cell_cm, px_to_cell(start_px), px_to_cell(goal_px))
+    start_cell = px_to_cell(start_px)
+    goal_cell = px_to_cell(goal_px)
+    grid[start_cell[0]][start_cell[1]] = 0
+    grid[goal_cell[0]][goal_cell[1]] = 0
+
+    return GridMap(grid, cell_cm, start_cell, goal_cell)
