@@ -110,11 +110,10 @@ def main():
     start = (start[1] , rows - 1 - start[0])
     destination = (destination[1] , rows - 1 - destination[0])
     #plan path
-    path = plan_path(occupancy_grid, start, destination, cell_size_cm=20.0)
+    path = plan_path(occupancy_grid, start, destination, cell_size)
 
     # Generate route
     route = generate_instructions(path, cell_size, starting_angle)
-    print(route)
     # Generate sdk commands
     commands = generate_commands(route, speed)
 
@@ -131,26 +130,37 @@ def main():
     # Initialize Tello
     tello = Tello()
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    ## Connection check, enter SDK mode
+    # #Connection check, enter SDK mode
     # response = tello.send_command("command")
     # print("Connection response:", response)
+    # battery = tello.send_command("battery?")
+    # print("Battery Level: ", battery)
 
-    for command in commands:
-        print("Sending command......")
-        print(command)
-        #tello.send_command(command)
+    # Manual check before sending commands
+    proceed = input("Start sending commands (y/n) : ")
 
-    # # Save log
-    # log = tello.get_log()
-    # os.makedirs("log", exist_ok=True)
-    # log_filename = f"log/{start_time}.txt"
+    if proceed == "y":
 
-    # with open(log_filename, "w") as out:
-    #     for stat in log:
-    #         stat.print_stats()
-    #         out.write(stat.return_stats())
+        for command in commands:
+            print("Sending command......")
+            print(command)
+            tello.send_command(command)
 
-    # print(f"Log saved to {log_filename}")
+        # Save log
+        log = tello.get_log()
+        os.makedirs("log", exist_ok=True)
+        log_filename = f"log/{start_time}.txt"
+
+        with open(log_filename, "w") as out:
+            for stat in log:
+                stat.print_stats()
+                out.write(stat.return_stats())
+
+        print(f"Log saved to {log_filename}")
+
+    else:
+
+        print("Existed without execution....")
 
 if __name__ == "__main__":
     main()
