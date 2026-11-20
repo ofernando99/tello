@@ -11,10 +11,6 @@ from mapping.mapping import load_map
 from path_planning.path_planner_xy import plan_path
 from DroneBlocksTelloSimulator.DroneBlocksSimulatorContextManager import DroneBlocksSimulatorContextManager
 
-#===================================================
-sim_key = '9cfd8715-1940-4fb4-9ea5-e4c9a6eb5f5f'
-#===================================================
-
 def generate_instructions(path, cell_size, starting_angle):
 
     instructions = []
@@ -167,8 +163,11 @@ def main():
     starting_angle = 90
     cell_size = 20
 
-    #load map
-    occupancy_grid, start, destination = load_map(input("Enter map path : "))
+    # load map
+    map_path = input("Enter map path : ")
+    # connect simulation
+    sim_key = input("Enter simulator key (visit : coding-sim.droneblocks.io) : ")
+    occupancy_grid, start, destination = load_map(map_path)
     # converting back to x y coordinates
     rows, cols = occupancy_grid.shape
     start = (start[1] , rows - 1 - start[0])
@@ -190,36 +189,28 @@ def main():
     #plot path
     plot_path(occupancy_grid, path)
 
-    # Manual check before sending commands
-    proceed = input("Start sending commands (y/n) : ")
-
-    if proceed == "y":
-        print("Connecting to DroneBlocks...")
-        with DroneBlocksSimulatorContextManager(simulator_key=sim_key) as drone:
-            for command in commands:
-                print("Sending command......")
-                print(command)
-                command = command.split()
-                if command[0] == "takeoff":
-                    drone.takeoff()
-                elif command[0] == "land":
-                    drone.land()
-                elif command[0] == "forward":
-                    drone.fly_forward(int(command[1]), 'cm')
-                elif command[0] == "back":
-                    drone.fly_backward(int(command[1]), 'cm')
-                elif command[0] == "left":
-                    drone.fly_left(int(command[1]), 'cm')
-                elif command[0] == "right":
-                    drone.fly_right(int(command[1]), 'cm')
-                elif command[0] == "cw":
-                    drone.yaw_right(int(command[1]))
-                elif command[0] == "ccw":
-                    drone.yaw_left(int(command[1]))
-
-    else:
-
-        print("Existed without execution....")
+    print("Connecting to DroneBlocks...")
+    with DroneBlocksSimulatorContextManager(simulator_key=sim_key) as drone:
+        for command in commands:
+            print("Sending command......")
+            print(command)
+            command = command.split()
+            if command[0] == "takeoff":
+                drone.takeoff()
+            elif command[0] == "land":
+                drone.land()
+            elif command[0] == "forward":
+                drone.fly_forward(int(command[1]), 'cm')
+            elif command[0] == "back":
+                drone.fly_backward(int(command[1]), 'cm')
+            elif command[0] == "left":
+                drone.fly_left(int(command[1]), 'cm')
+            elif command[0] == "right":
+                drone.fly_right(int(command[1]), 'cm')
+            elif command[0] == "cw":
+                drone.yaw_right(int(command[1]))
+            elif command[0] == "ccw":
+                drone.yaw_left(int(command[1]))
 
 if __name__ == "__main__":
     main()

@@ -39,7 +39,8 @@ def generate_commands(route, speed):
         x_distance = segment["distance_x"]
         y_distance = segment["distance_y"]
 
-        command = "go" + " " + str(x_distance) + " " + str(y_distance) + " " + str(0) + " " + str(speed)
+        # plot axis is is 90 degrees behind from drone axsis
+        command = "go" + " " + str(y_distance) + " " + str(x_distance * -1) + " " + str(0) + " " + str(speed)
 
         commands.append(command)
 
@@ -99,7 +100,6 @@ class KeepAlive:
 
 def main():
 
-    starting_angle = 90
     cell_size = 20
     speed = 20
 
