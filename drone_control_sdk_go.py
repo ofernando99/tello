@@ -11,7 +11,7 @@ from mapping.mapping import load_map
 from path_planning.path_planner_xy import plan_path
 from drone_control.tello import Tello
 
-def generate_instructions(path, cell_size, starting_angle):
+def generate_instructions(path, cell_size):
 
     instructions = []
 
@@ -113,7 +113,7 @@ def main():
     path = plan_path(occupancy_grid, start, destination, cell_size)
 
     # Generate route
-    route = generate_instructions(path, cell_size, starting_angle)
+    route = generate_instructions(path, cell_size)
     # Generate sdk commands
     commands = generate_commands(route, speed)
 
