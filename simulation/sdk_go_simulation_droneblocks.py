@@ -1,5 +1,5 @@
 import time
-import time
+import math
 import threading
 import matplotlib.pyplot as plt
 
@@ -10,7 +10,9 @@ from mapping.mapping import load_map
 from path_planning.path_planner_xy import plan_path
 from DroneBlocksTelloSimulator.DroneBlocksSimulatorContextManager import DroneBlocksSimulatorContextManager
 
-def generate_instructions(path, cell_size):
+def generate_instructions(path, cell_size, starting_angle):
+
+    theta = math.radians(starting_angle)
 
     instructions = []
 
@@ -22,10 +24,14 @@ def generate_instructions(path, cell_size):
         grid_x_change = next[0] - current[0]
         grid_y_change = next[1] - current[1]
 
-        x_distance = round(grid_x_change * cell_size)
-        y_distance = round(grid_y_change * cell_size)
+        x_distance = grid_x_change * cell_size
+        y_distance = grid_y_change * cell_size
 
-        instructions.append({"distance_x": x_distance, "distance_y": y_distance})
+        # transformation
+        x = round(x_distance * math.cos(theta) + y_distance * math.sin(theta))
+        y = round(-x_distance * math.sin(theta) + y_distance * math.cos(theta))
+
+        instructions.append({"distance_x": x, "distance_y": y})
 
     return instructions
 
@@ -115,7 +121,7 @@ def main():
     path = plan_path(occupancy_grid, start, destination, cell_size)
 
     # Generate route
-    route = generate_instructions(path, cell_size)
+    route = generate_instructions(path, cell_size, starting_angle)
     # Generate sdk commands
     commands = generate_commands(route, speed)
 
@@ -139,7 +145,7 @@ def main():
             elif command[0] == "land":
                 drone.land()
             elif command[0] == "go":
-                drone.fly_to_xyz(int(command[2]), int(command[1])* -1, int(command[3]), 'cm')
+                drone.fly_to_xyz(int(command[1]), int(command[2]), int(command[3]), 'cm')
 
 if __name__ == "__main__":
     main()
