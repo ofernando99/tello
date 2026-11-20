@@ -3,7 +3,6 @@ import os
 import time
 import threading
 import math
-import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 
