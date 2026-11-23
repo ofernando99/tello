@@ -1,0 +1,63 @@
+
+id: 0
+command: command
+response: b'ok'
+start time: 2026-11-23 09:18:29.875680
+end_time: 2026-11-23 09:18:29.925547
+duration: 0.049867
+
+id: 1
+command: battery?
+response: b'82\r\n'
+start time: 2026-11-23 09:18:29.926898
+end_time: 2026-11-23 09:18:29.968403
+duration: 0.041505
+
+id: 2
+command: takeoff
+response: b'ok'
+start time: 2026-11-23 09:19:04.047814
+end_time: 2026-11-23 09:19:10.469273
+duration: 6.421459
+
+id: 3
+command: go 200 -80 0 20
+response: b'ok'
+start time: 2026-11-23 09:19:10.469422
+end_time: 2026-11-23 09:19:24.956480
+duration: 14.487058
+
+id: 4
+command: go 0 -60 0 20
+response: b'ok'
+start time: 2026-11-23 09:19:24.956879
+end_time: 2026-11-23 09:19:28.443174
+duration: 3.486295
+
+id: 5
+command: go -100 -80 0 20
+response: b'ok'
+start time: 2026-11-23 09:19:28.443351
+end_time: 2026-11-23 09:19:34.339011
+duration: 5.89566
+
+id: 6
+command: go 0 -60 0 20
+response: b'ok'
+start time: 2026-11-23 09:19:34.339296
+end_time: 2026-11-23 09:19:37.371642
+duration: 3.032346
+
+id: 7
+command: go 160 -80 0 20
+response: b'ok'
+start time: 2026-11-23 09:19:37.372116
+end_time: 2026-11-23 09:19:45.613963
+duration: 8.241847
+
+id: 8
+command: land
+response: b'ok'
+start time: 2026-11-23 09:19:45.614264
+end_time: 2026-11-23 09:19:48.281329
+duration: 2.667065
