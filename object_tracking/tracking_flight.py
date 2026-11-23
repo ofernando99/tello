@@ -99,6 +99,10 @@ def fly_and_track(commands, duration, headless):
     cleanup_failed = False
     try:
         require_ok(tello, "command", timeout=2)
+        battery = tello.send_command("battery?", timeout=2)
+        if battery is None or not battery.isascii() or not battery.isdecimal() or int(battery) > 100:
+            raise RuntimeError(f"battery?: invalid or missing reply ({battery!r})")
+        print(f"Battery level: {battery}%")
         takeoff_attempted = True
         require_ok(tello, "takeoff")
         for command in commands:

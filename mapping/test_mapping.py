@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import tempfile
+from pathlib import Path
 
 import numpy as np
 
@@ -35,12 +36,21 @@ def run_unit_checks() -> None:
     assert g_txt.rows == 15 and g_txt.cols == 25
     assert g_txt.start == (12, 3) and g_txt.destination == (2, 19)
 
+    # Coordinate-based .txt map (bottom-left y axis)
+    g_coordinates = load_map("mapping/maps/project_2_layout_test.txt", cell_cm=20)
+    assert g_coordinates.rows == 30 and g_coordinates.cols == 55
+    assert g_coordinates.start == (24, 20)
+    assert g_coordinates.destination == (19, 35)
+    assert g_coordinates.occupancy_grid[25, 27] == 0
+    assert g_coordinates.occupancy_grid[24, 27] == 1
+    assert g_coordinates.occupancy_grid[14, 27] == 1
+
     # 3. Python .py NumPy grid loader check (low-res & high-res maze)
     occ, start, dest = load_map("mapping/maps/example_arena.py")
     assert occ.shape == (10, 12) and start == (0, 0) and dest == (9, 11)
 
     occ_hr_py, start_hr_py, dest_hr_py = load_map("mapping/maps/example_high_res_maze.py")
-    assert occ_hr_py.shape == (18, 21) and start_hr_py == (1, 1) and dest_hr_py == (16, 20)
+    assert occ_hr_py.shape == (20, 25) and start_hr_py == (1, 1) and dest_hr_py == (18, 23)
     assert occ_hr_py[start_hr_py] == 0 and occ_hr_py[dest_hr_py] == 0
 
     # 4. High-res maze image (.jpg) check (default >= 20x20 and finer resolution)
@@ -88,10 +98,11 @@ def run_unit_checks() -> None:
     g_arr = GridMap.from_array(arr, start=(0, 0), destination=(1, 2))
     assert np.array_equal(g_arr.occupancy_grid, arr)
 
-    with tempfile.NamedTemporaryFile("w", suffix=".json") as tmp:
-        json.dump({"occupancy_grid": arr.tolist(), "start": [0, 0], "destination": [1, 2]}, tmp)
-        tmp.flush()
-        g_disc_json = load_map(tmp.name)
+    with tempfile.TemporaryDirectory() as folder:
+        map_path = Path(folder) / "grid.json"
+        with map_path.open("w", encoding="utf-8") as output:
+            json.dump({"occupancy_grid": arr.tolist(), "start": [0, 0], "destination": [1, 2]}, output)
+        g_disc_json = load_map(str(map_path))
         assert np.array_equal(g_disc_json.occupancy_grid, arr)
 
     print("[PASS] All mapping input formats (low-res, high-res, min_grid_size clamping, and NumPy exports) verified.")

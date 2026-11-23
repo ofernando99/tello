@@ -8,6 +8,8 @@ Supported inputs
 ----------------
 * ``.json``  geometric description measured off the drawing (recommended)
 * ``.txt``   hand-drawn ASCII grid  ('#' obstacle, '.' free, 'S' start, 'G' goal)
+             or a project layout file (x_min/x_max/y_min/y_max, obstacles_xy_cm,
+             drone_start, drone_finish in world cm, y up) -> ``load_layout``
 * ``.png/.jpg`` scanned drawing; dark pixels = obstacles (needs OpenCV)
 
 Map frame convention (same as an image / the drawing on paper):
@@ -19,6 +21,8 @@ from __future__ import annotations
 import json
 import math
 import os
+import ast
+import re
 from dataclasses import dataclass, field
 
 Cell = tuple[int, int]  # (row, col)
@@ -30,6 +34,14 @@ class GridMap:
     start: Cell
     destination: Cell
     raw: list[list[int]] | None = field(default=None, repr=False)  # pre-inflation
+    # World (x_cm, y_cm) of the grid's top-left corner, for layout maps (y axis points up)
+    origin_cm: tuple[float, float] | None = None
+
+    def cell_to_xy_cm(self, cell: Cell) -> tuple[float, float]:
+        """Return the world (x_cm, y_cm) centre of ``cell`` (layout maps; y up)."""
+        x0, y_top = self.origin_cm or (0.0, self.rows * self.cell_cm)
+        row, col = cell
+        return (x0 + (col + 0.5) * self.cell_cm, y_top - (row + 0.5) * self.cell_cm)
 
     @property
     def rows(self) -> int:
@@ -102,6 +114,7 @@ class GridMap:
             self.start,
             self.destination,
             raw=self.grid,
+            origin_cm=self.origin_cm,
         )
 
     def _expand_obstacles(self, inflated_grid: list[list[int]], radius_cells: int) -> None:
@@ -183,6 +196,10 @@ def load_map(path: str, **kwargs) -> GridMap:
     if extension == ".json":
         return load_json(path)
     if extension == ".txt":
+        with open(path) as file:
+            text = file.read()
+        if "obstacles_xy_cm" in text:
+            return load_layout(path, **kwargs)
         return load_ascii(path, **kwargs)
     if extension == ".py":
         return load_python(path, **kwargs)
@@ -239,9 +256,17 @@ def load_python(path: str, cell_cm: float = 20) -> GridMap:
 
 def load_ascii(path: str, cell_cm: float = 20) -> GridMap:
     """Load an occupancy grid from a hand-drawn ASCII text file."""
-    grid, start, destination = [], None, None
     with open(path) as file:
-        raw_lines = [line.rstrip("\n") for line in file if line.strip() and not line.startswith(";")]
+        source = file.read()
+    if re.search(r"^\s*(?:x_min|obstacles_xy_cm|drone_start)\s*=", source, re.MULTILINE):
+        return load_coordinate_map(path, cell_cm=cell_cm)
+
+    grid, start, destination = [], None, None
+    raw_lines = [
+        line.rstrip("\n")
+        for line in source.splitlines()
+        if line.strip() and not line.startswith(";")
+    ]
     for row_idx, line in enumerate(raw_lines):
         grid_row = []
         for col_idx, char in enumerate(line.replace(" ", "")):
@@ -259,6 +284,169 @@ def load_ascii(path: str, cell_cm: float = 20) -> GridMap:
     max_cols = max(len(grid_row) for grid_row in grid)
     grid = [grid_row + [1] * (max_cols - len(grid_row)) for grid_row in grid]
     return GridMap(grid, cell_cm, start, destination)
+
+
+def load_coordinate_map(path: str, cell_cm: float = 20) -> GridMap:
+    """Load a physical-coordinate text map.
+
+    The format uses ``x_min``/``x_max``/``y_min``/``y_max``,
+    ``obstacles_xy_cm`` (a list of ``(x, y)`` points), ``drone_start``,
+    and ``drone_finish``. Coordinates use a bottom-left y axis: increasing y
+    is rendered upward, while GridMap continues to use row-zero-at-the-top.
+    """
+    with open(path) as file:
+        source = file.read()
+
+    values = {}
+    names = (
+        "x_min", "x_max", "y_min", "y_max",
+        "obstacles_xy_cm", "drone_start", "drone_finish",
+        "start", "goal", "destination",
+    )
+    for name in names:
+        match = re.search(
+            rf"^\s*{re.escape(name)}\s*=\s*(.+)$",
+            source,
+            re.MULTILINE,
+        )
+        if not match:
+            continue
+        rhs = match.group(1).strip()
+        if name == "obstacles_xy_cm":
+            list_match = re.search(
+                rf"^\s*{re.escape(name)}\s*=\s*(\[[\s\S]*?\])",
+                source,
+                re.MULTILINE,
+            )
+            if list_match:
+                rhs = list_match.group(1)
+        else:
+            rhs = rhs.split("#", 1)[0].strip().rstrip(",").strip()
+        try:
+            values[name] = ast.literal_eval(rhs)
+        except (SyntaxError, ValueError):
+            continue
+
+    required_bounds = ("x_min", "x_max", "y_min", "y_max")
+    missing_bounds = [name for name in required_bounds if name not in values]
+    if missing_bounds:
+        raise ValueError(
+            f"Coordinate map '{path}' needs {', '.join(required_bounds)}"
+        )
+
+    x_min = float(values["x_min"])
+    x_max = float(values["x_max"])
+    y_min = float(values["y_min"])
+    y_max = float(values["y_max"])
+    if x_max <= x_min or y_max <= y_min:
+        raise ValueError(f"Coordinate map '{path}' has invalid arena bounds")
+
+    cols = int(math.ceil((x_max - x_min) / cell_cm))
+    rows = int(math.ceil((y_max - y_min) / cell_cm))
+    grid = [[0] * cols for _ in range(rows)]
+
+    def xy_to_cell(point) -> Cell:
+        if not isinstance(point, (list, tuple)) or len(point) != 2:
+            raise ValueError(f"Invalid coordinate point {point!r} in '{path}'")
+        x_cm, y_cm = float(point[0]), float(point[1])
+        if not (x_min <= x_cm <= x_max and y_min <= y_cm <= y_max):
+            raise ValueError(
+                f"Point ({x_cm}, {y_cm}) is outside arena bounds "
+                f"[{x_min}, {x_max}] x [{y_min}, {y_max}]"
+            )
+        col = min(cols - 1, int(math.floor((x_cm - x_min) / cell_cm)))
+        physical_row = int(math.floor((y_cm - y_min) / cell_cm))
+        row = min(rows - 1, rows - 1 - physical_row)
+        return row, col
+
+    obstacles = values.get("obstacles_xy_cm", [])
+    if not isinstance(obstacles, (list, tuple)):
+        raise ValueError(f"obstacles_xy_cm in '{path}' must be a list of (x, y) points")
+    for point in obstacles:
+        row, col = xy_to_cell(point)
+        grid[row][col] = 1
+
+    start = values.get("drone_start") or values.get("start")
+    destination = values.get("drone_finish") or values.get("goal") or values.get("destination")
+    if start is None or destination is None:
+        raise ValueError(
+            f"Coordinate map '{path}' needs drone_start and drone_finish"
+        )
+
+    start_cell = xy_to_cell(start)
+    destination_cell = xy_to_cell(destination)
+    if grid[start_cell[0]][start_cell[1]] == 1:
+        raise ValueError(f"start {start_cell} lies inside an obstacle")
+    if grid[destination_cell[0]][destination_cell[1]] == 1:
+        raise ValueError(f"destination {destination_cell} lies inside an obstacle")
+
+    return GridMap(grid, float(cell_cm), start_cell, destination_cell)
+
+
+def load_layout(path: str, cell_cm: float = 20, obstacle_radius_cm: float = 0.0) -> GridMap:
+    """Load a project layout file in world coordinates (cm, x right, y UP)::
+
+        x_min=-200, x_max=900,
+        y_min=-200, y_max=400,
+        obstacles_xy_cm = [(350,-100), (350,-90), ...]   # sampled obstacle points
+        drone_start = (200,-100)
+        drone_finish = (500,0)
+
+    Each obstacle point marks the cell containing it (plus any cells within
+    ``obstacle_radius_cm``). Row 0 is the top (y_max) edge; col 0 is x_min.
+    Use ``GridMap.cell_to_xy_cm`` to convert grid cells back to world cm.
+    """
+    import ast
+    import re
+
+    with open(path) as file:
+        text = "\n".join(line.split("#", 1)[0] for line in file.read().splitlines())
+
+    def scalar(name: str) -> float:
+        match = re.search(rf"\b{name}\s*=\s*(-?\d+(?:\.\d+)?)", text)
+        if not match:
+            raise ValueError(f"layout '{path}' missing '{name}'")
+        return float(match.group(1))
+
+    def literal(name: str, pattern: str):
+        match = re.search(rf"\b{name}\s*=\s*({pattern})", text, re.DOTALL)
+        if not match:
+            raise ValueError(f"layout '{path}' missing '{name}'")
+        return ast.literal_eval(match.group(1))
+
+    x_min, x_max = scalar("x_min"), scalar("x_max")
+    y_min, y_max = scalar("y_min"), scalar("y_max")
+    obstacles = literal("obstacles_xy_cm", r"\[.*?\]")
+    start_xy = literal("drone_start", r"\([^)]*\)")
+    finish_xy = literal("drone_finish", r"\([^)]*\)")
+
+    grid, rows, cols = init_grid(x_max - x_min, y_max - y_min, cell_cm)
+
+    def xy_to_cell(x_cm: float, y_cm: float) -> Cell:
+        if not (x_min <= x_cm <= x_max and y_min <= y_cm <= y_max):
+            raise ValueError(f"point {(x_cm, y_cm)} lies outside the arena bounds")
+        # Bottom-left convention: count cells up from y_min, then flip so row 0 is the top
+        row = max(0, rows - 1 - int((y_cm - y_min) // cell_cm))
+        col = min(cols - 1, int((x_cm - x_min) // cell_cm))
+        return (row, col)
+
+    radius_cells = int(math.ceil(obstacle_radius_cm / cell_cm)) if obstacle_radius_cm > 0 else 0
+    for x_cm, y_cm in obstacles:
+        row, col = xy_to_cell(x_cm, y_cm)
+        for dr in range(-radius_cells, radius_cells + 1):
+            for dc in range(-radius_cells, radius_cells + 1):
+                r, c = row + dr, col + dc
+                if 0 <= r < rows and 0 <= c < cols and math.hypot(dr, dc) * cell_cm <= max(obstacle_radius_cm, 0):
+                    grid[r][c] = 1
+        grid[row][col] = 1
+
+    return GridMap(
+        grid,
+        float(cell_cm),
+        xy_to_cell(*start_xy),
+        xy_to_cell(*finish_xy),
+        origin_cm=(x_min, y_min + rows * cell_cm),
+    )
 
 
 def init_grid(
