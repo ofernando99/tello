@@ -134,11 +134,10 @@ def main():
     # Initialize Tello
     tello = Tello()
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # #Connection check, enter SDK mode
-    # response = tello.send_command("command")
-    # print("Connection response:", response)
-    # battery = tello.send_command("battery?")
-    # print("Battery Level: ", battery)
+    # Connection check, enter SDK mode
+    tello.send_command("command")
+    # battery level check
+    tello.send_command("battery?")
 
     # Manual check before sending commands
     proceed = input("Start sending commands (y/n) : ")
