@@ -27,6 +27,11 @@ from mapping.mapping import load_map
 # Standard or high-resolution image map (guarantees at least a 20x20 grid by default)
 occupancy_grid, start, destination = load_map("mapping/maps/example_high_res_maze.jpg")
 
+# Optional: grow obstacles by a safety margin in cm (use include_walls=False to skip arena edges)
+gmap = load_map("mapping/maps/example_arena.png", cell_cm=20)
+gmap = gmap.inflate(10, include_walls=False)
+occupancy_grid, start, destination = gmap
+
 # Customize resolution or minimum grid dimensions for image maps
 gmap = load_map(
     "mapping/maps/example_high_res_maze.jpg",
