@@ -1,13 +1,9 @@
-import os
-import time
 import math
-import threading
 import matplotlib.pyplot as plt
-from datetime import datetime
 
 from mapping.mapping import load_map
 from path_planning.path_planner_xy import plan_path
-from drone_control.tello import Tello
+from object_tracking.tracking_flight import fly_and_track, tracking_options
 
 def generate_instructions(path, cell_size, starting_angle):
 
@@ -73,35 +69,8 @@ def plot_path(occupancy_grid, path):
     plt.axis("equal")
     plt.show()
 
-class KeepAlive:
-    def __init__(self, tello):
-        self.alive = True
-        self.lock = threading.Lock()
-        self.tello = tello
-
-    def __call__(self):
-
-        ## get alive status
-        with self.lock:
-            alive = self.alive
-
-        while alive:
-            print("Living")
-            self.tello.send_command("command")
-            time.sleep(3)
-            
-            ## check if I need to keep living 
-            with self.lock:
-                alive = self.alive
-
-        print("You killed me")
-
-    def shutdown(self):
-        print("Received Shutdown")
-        with self.lock:
-            self.alive = False
-
 def main():
+    options = tracking_options()
 
     starting_angle = 90
     cell_size = 20
@@ -121,50 +90,14 @@ def main():
     # Generate sdk commands
     commands = generate_commands(route, speed)
 
-    #add takeoff and land
-    commands.insert(0, "takeoff")
-    commands.append("land")
-    #print commands
     print("-------Command sequence-------")
-    for command in commands: print(command)
-    #plot path
+    for command in ["takeoff", *commands, "stationary hover and tracking", "land"]:
+        print(command)
     plot_path(occupancy_grid, path)
 
-    print("Connecting to Tello...")
-    # Initialize Tello
-    tello = Tello()
-    start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # #Connection check, enter SDK mode
-    # response = tello.send_command("command")
-    # print("Connection response:", response)
-    # battery = tello.send_command("battery?")
-    # print("Battery Level: ", battery)
+    if input("Start sending commands (y/n) : ").strip().lower() == "y":
+        fly_and_track(commands, options.hover_seconds, options.headless)
 
-    # Manual check before sending commands
-    proceed = input("Start sending commands (y/n) : ")
-
-    if proceed == "y":
-
-        for command in commands:
-            print("Sending command......")
-            print(command)
-            tello.send_command(command)
-
-        # Save log
-        log = tello.get_log()
-        os.makedirs("log", exist_ok=True)
-        log_filename = f"log/{start_time}.txt"
-
-        with open(log_filename, "w") as out:
-            for stat in log:
-                stat.print_stats()
-                out.write(stat.return_stats())
-
-        print(f"Log saved to {log_filename}")
-
-    else:
-
-        print("Existed without execution....")
 
 if __name__ == "__main__":
     main()
