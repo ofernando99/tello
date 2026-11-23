@@ -35,6 +35,14 @@ def run_unit_checks() -> None:
     assert g_txt.rows == 15 and g_txt.cols == 25
     assert g_txt.start == (12, 3) and g_txt.destination == (2, 19)
 
+    # Coordinate-based .txt map (bottom-left y axis)
+    g_coordinates = load_map("mapping/maps/project_2_layout_test.txt", cell_cm=20)
+    assert g_coordinates.rows == 30 and g_coordinates.cols == 55
+    assert g_coordinates.start == (24, 20)
+    assert g_coordinates.destination == (19, 35)
+    assert g_coordinates.occupancy_grid[24, 27] == 0
+    assert g_coordinates.occupancy_grid[14, 27] == 1
+
     # 3. Python .py NumPy grid loader check (low-res & high-res maze)
     occ, start, dest = load_map("mapping/maps/example_arena.py")
     assert occ.shape == (10, 12) and start == (0, 0) and dest == (9, 11)
