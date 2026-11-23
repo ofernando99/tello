@@ -1,12 +1,12 @@
-# Tello Autonomous Navigation (Mapping, Path Planning & Drone Control)
+# Tello Autonomous Navigation (Mapping, Path Planning,Drone Control and Object Tracking)
 
 Autonomous navigation and real-time visual object tracking pipeline for the DJI Tello drone using occupancy grid path planning and computer vision.
 
 ## Contributors
-- **Jessie W** (Occupancy Grid Mapping, Benchmarking)
+- **Jessie W** (Occupancy Grid Mapping)
 - **Anna Zarubina** (Path Planning, Algorithms)
 - **Oshanda Fernando** (Drone Control, Navigation)
-- **Ganbat Selenge** (OpenCV, Object Tracking)
+- **Ganbat Selenge** (Object Tracking)
 
 ## Installation
 
@@ -25,6 +25,16 @@ Converts 2D arena maps (`.json`, `.txt`, `.png`, `.py`) into `occupancy_grid` (`
 from mapping.mapping import load_map
 
 occupancy_grid, start, destination = load_map("mapping/maps/example_arena.png")
+```
+
+Optional: grow obstacles by 10 cm safety margin
+
+```python
+from mapping.mapping import load_map
+
+gmap = load_map("mapping/maps/example_arena.png")
+gmap = gmap.inflate(10)  
+occupancy_grid, start, destination = gmap
 ```
 
 ## Checkerboard tracking

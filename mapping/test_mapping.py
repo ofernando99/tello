@@ -13,7 +13,6 @@ import json
 import os
 import sys
 import tempfile
-from pathlib import Path
 
 import numpy as np
 
@@ -98,11 +97,10 @@ def run_unit_checks() -> None:
     g_arr = GridMap.from_array(arr, start=(0, 0), destination=(1, 2))
     assert np.array_equal(g_arr.occupancy_grid, arr)
 
-    with tempfile.TemporaryDirectory() as folder:
-        map_path = Path(folder) / "grid.json"
-        with map_path.open("w", encoding="utf-8") as output:
-            json.dump({"occupancy_grid": arr.tolist(), "start": [0, 0], "destination": [1, 2]}, output)
-        g_disc_json = load_map(str(map_path))
+    with tempfile.NamedTemporaryFile("w", suffix=".json") as tmp:
+        json.dump({"occupancy_grid": arr.tolist(), "start": [0, 0], "destination": [1, 2]}, tmp)
+        tmp.flush()
+        g_disc_json = load_map(tmp.name)
         assert np.array_equal(g_disc_json.occupancy_grid, arr)
 
     print("[PASS] All mapping input formats (low-res, high-res, min_grid_size clamping, and NumPy exports) verified.")
