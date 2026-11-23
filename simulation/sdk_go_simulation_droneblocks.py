@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 from mapping.mapping import load_map
-from path_planning.path_planner_xy import plan_path
+from path_planning.path_planner import plan_path
 from DroneBlocksTelloSimulator.DroneBlocksSimulatorContextManager import DroneBlocksSimulatorContextManager
 
 def generate_instructions(path, cell_size, starting_angle):
@@ -28,8 +28,8 @@ def generate_instructions(path, cell_size, starting_angle):
         y_distance = grid_y_change * cell_size
 
         # transformation
-        x = round(x_distance * math.cos(theta) + y_distance * math.sin(theta))
-        y = round(-x_distance * math.sin(theta) + y_distance * math.cos(theta))
+        x = round(x_distance * math.cos(theta) - y_distance * math.sin(theta))
+        y = round(-x_distance * math.sin(theta) - y_distance * math.cos(theta))
 
         instructions.append({"distance_x": x, "distance_y": y})
 
@@ -50,14 +50,21 @@ def generate_commands(route, speed):
 
     return commands
 
+def transform(occupancy_grid, path):
+    trasform = []
+    rows = occupancy_grid.shape[0]
+    for coordinate in path:
+        trasform.append((rows - 1 - coordinate[0], coordinate[1]))
+    return trasform
+
 def plot_path(occupancy_grid, path):
 
     #plot the grid
     plt.imshow(occupancy_grid[::-1], cmap='binary', vmin=0, vmax=1)
 
-    # Plot the path
-    x = [point[0] for point in path]
-    y = [point[1] for point in path]
+    # Plot the path (x vertical y horizontal)
+    y = [point[0] for point in path]
+    x = [point[1] for point in path]
 
     plt.plot(x, y, marker="o")
 
@@ -67,8 +74,8 @@ def plot_path(occupancy_grid, path):
 
     plt.gca().invert_yaxis()
     plt.grid(True)
-    plt.xlabel("X")
-    plt.ylabel("Y")
+    plt.xlabel("Y")
+    plt.ylabel("X")
     plt.title("Planned Drone Path")
     plt.legend()
     plt.axis("equal")
@@ -104,22 +111,23 @@ class KeepAlive:
 
 def main():
 
-    starting_angle = 90
+    starting_angle = 0
     cell_size = 20
     speed = 20
 
-    # load map
     map_path = input("Enter map path : ")
     # connect simulation
     sim_key = input("Enter simulator key (visit : coding-sim.droneblocks.io) : ")
+    # load map
     occupancy_grid, start, destination = load_map(map_path)
-    # converting back to x y coordinates
-    rows, cols = occupancy_grid.shape
-    start = (start[1] , rows - 1 - start[0])
-    destination = (destination[1] , rows - 1 - destination[0])
-    #plan path
+    print(occupancy_grid)
+    print(start)
+    print(destination)
+    # plan path
     path = plan_path(occupancy_grid, start, destination, cell_size)
 
+    # converting path into ground cordinates frame
+    path = transform(occupancy_grid, path)
     # Generate route
     route = generate_instructions(path, cell_size, starting_angle)
     # Generate sdk commands
