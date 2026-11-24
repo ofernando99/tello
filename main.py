@@ -8,34 +8,6 @@ from drone_control.path_command import navigation
 # import tracking
 #===============================================#
 
-class KeepAlive:
-    def __init__(self, tello):
-        self.alive = True
-        self.lock = threading.Lock()
-        self.tello = tello
-
-    def __call__(self):
-
-        # get alive status
-        with self.lock:
-            alive = self.alive
-
-        while alive:
-            print("Living")
-            self.tello.send_command("command")
-            time.sleep(3)
-            
-            # check if I need to keep living 
-            with self.lock:
-                alive = self.alive
-
-        print("You killed me")
-
-    def shutdown(self):
-        print("Received Shutdown")
-        with self.lock:
-            self.alive = False
-
 def main():
 
     starting_angle = 0
