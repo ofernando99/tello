@@ -1,20 +1,22 @@
-from tello import Tello
-from datetime import datetime
-import time
 import os
 import time
-import threading
 import math
+import threading
+import matplotlib.pyplot as plt
+from datetime import datetime
 
-# Replace with path planner output
-path = [(0, 0),(1, 1),(1, 2),(2, 1),(2, 2),(3, 3)]
-cell_size = 20
-starting_angle = 90
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from mapping.mapping import load_map
+from path_planning.path_planner import plan_path
+from drone_control.tello import Tello
 
-def generate_commands(path, cell_size, starting_angle):
+def generate_instructions(path, cell_size, starting_angle):
 
-    commands = []
-    heading = starting_angle
+    theta = math.radians(starting_angle)
+
+    instructions = []
 
     for i in range(len(path) - 1):
 
@@ -27,38 +29,59 @@ def generate_commands(path, cell_size, starting_angle):
         x_distance = grid_x_change * cell_size
         y_distance = grid_y_change * cell_size
 
-        distance = round(math.sqrt(x_distance**2 + y_distance**2))
-        angle = round(math.degrees(math.atan2(y_distance, x_distance)))
+        # transformation
+        x = round(x_distance * math.cos(theta) - y_distance * math.sin(theta))
+        y = round(-x_distance * math.sin(theta) - y_distance * math.cos(theta))
 
-        turn = angle - heading
-        
-        # find the best turn direction (clockwise -, counterclockwise +)
-        if turn > 180:
-            turn = turn - 360
-        elif turn < -180:
-            turn = turn + 360
+        instructions.append({"distance_x": x, "distance_y": y})
 
-        #find the best movement direction
-        if -90 < turn < 90:
-            direction = "f"
-            heading = angle
+    return instructions
 
-        elif turn == -90:
-            direction = "r"
-            turn = 0
+def generate_commands(route, speed):
 
-        elif turn == 90:
-            direction = "l"
-            turn = 0
+    commands = []
 
-        else:
-            direction = "b"
-            turn = turn + 180 if turn < -90 else turn - 180
-            heading = angle + 180 if angle < 0 else angle - 180
-        
-        commands.append({"distance": distance, "angle": turn, "direction": direction})
+    for segment in route:
+
+        x_distance = segment["distance_x"]
+        y_distance = segment["distance_y"]
+
+        command = "go" + " " + str(x_distance) + " " + str(y_distance) + " " + str(0) + " " + str(speed)
+
+        commands.append(command)
 
     return commands
+
+def transform(occupancy_grid, path):
+    trasform = []
+    rows = occupancy_grid.shape[0]
+    for coordinate in path:
+        trasform.append((rows - 1 - coordinate[0], coordinate[1]))
+    return trasform
+
+def plot_path(occupancy_grid, path):
+
+    #plot the grid
+    plt.imshow(occupancy_grid[::-1], cmap='binary', vmin=0, vmax=1)
+
+    # Plot the path (x vertical y horizontal)
+    y = [point[0] for point in path]
+    x = [point[1] for point in path]
+
+    plt.plot(x, y, marker="o")
+
+    plt.scatter(x[0], y[0], color="green", label="Start", s=100) 
+
+    plt.scatter(x[-1], y[-1], color="red", label="Destination", s=100)
+
+    plt.gca().invert_yaxis()
+    plt.grid(True)
+    plt.xlabel("Y")
+    plt.ylabel("X")
+    plt.title("Planned Drone Path")
+    plt.legend()
+    plt.axis("equal")
+    plt.show()
 
 class KeepAlive:
     def __init__(self, tello):
@@ -88,82 +111,71 @@ class KeepAlive:
         with self.lock:
             self.alive = False
 
-def main():
+def navigation(cell_size, starting_angle, speed, occupancy_grid, path):
+
+    # converting path into ground cordinates frame
+    path = transform(occupancy_grid, path)
+    # Generate route
+    route = generate_instructions(path, cell_size, starting_angle)
+    # Generate sdk commands
+    commands = generate_commands(route, speed)
+
+    #add takeoff
+    commands.insert(0, "takeoff")
+    #print commands
+    print("-------Command sequence-------")
+    for command in commands: print(command)
+    #plot path
+    plot_path(occupancy_grid, path)
 
     print("Connecting to Tello...")
     # Initialize Tello
     tello = Tello()
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     # Connection check, enter SDK mode
-    response = tello.send_command("command")
-    print("Connection response:", response)
+    tello.send_command("command")
+    # battery level check
+    tello.send_command("battery?")
 
-    # Generate route
-    route = generate_commands(path, cell_size, starting_angle)
+    # Manual check before sending commands
+    proceed = input("Start sending commands (y/n) : ")
 
-    tello.send_command("takeoff")
+    if proceed == "y":
 
-    for segment in route:
-
-        angle = segment["angle"]
-        distance = segment["distance"]
-        direction = segment["direction"]
-
-        if direction == "f":
-            if angle < 0:
-                command = "cw " + str(abs(angle))
-                command = command.strip()
-                print(command)
-                tello.send_command(command)
-
-            elif angle > 0:
-                command = "ccw " + str(abs(angle))
-                print(command)
-                tello.send_command(command)
-
-            command = "forward " + str(distance)
+        for command in commands:
+            print("Sending command......")
             print(command)
             tello.send_command(command)
 
-        elif direction == "l":
-            command = "left " + str(distance)
-            print(command)
-            tello.send_command(command)
+        # Save log
+        log = tello.get_log()
+        os.makedirs("log", exist_ok=True)
+        log_filename = f"log/{start_time}.txt"
 
-        elif direction == "r":
-            command = "right " + str(distance)
-            print(command)
-            tello.send_command(command)
+        with open(log_filename, "w") as out:
+            for stat in log:
+                stat.print_stats()
+                out.write(stat.return_stats())
 
-        elif direction == "b":
-            if angle < 0:
-                command = "cw " + str(abs(angle))
-                command = command.strip()
-                print(command)
-                tello.send_command(command)
+        print(f"Log saved to {log_filename}")
 
-            elif angle > 0:
-                command = "ccw " + str(abs(angle))
-                print(command)
-                tello.send_command(command)
+    else:
 
-            command = "back " + str(distance)
-            print(command)
-            tello.send_command(command)
+        print("Existed without execution....")
 
-    tello.send_command("land")
+def main():
 
-    # Save log
-    log = tello.get_log()
-    os.makedirs("log", exist_ok=True)
-    log_filename = f"log/{start_time}.txt"
+    cell_size = 20
+    starting_angle = 0
+    speed = 20
 
-    with open(log_filename, "w") as out:
-        for stat in log:
-            stat.print_stats()
-            out.write(stat.return_stats())
-
-    print(f"Log saved to {log_filename}")
+    map_path = input("Enter map path : ")
+    # load map
+    occupancy_grid, start, destination = load_map(map_path)
+    # plan path
+    path = plan_path(occupancy_grid, start, destination, cell_size)
+    # send commands to drone
+    navigation(cell_size, starting_angle, speed, occupancy_grid, path)
 
 if __name__ == "__main__":
     main()
