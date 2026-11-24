@@ -49,6 +49,8 @@ def main():
     path = plan_path(occupancy_grid, start, destination, cell_size)
     # send commands to drone
     navigation(cell_size, starting_angle, speed, occupancy_grid, path)
+    # sending commands from takeoff to end point (without landing command)
+    
     # video streaming and tracking
     #=====================================#
 
