@@ -1,6 +1,3 @@
-import time
-import threading
-
 from mapping.mapping import load_map
 from path_planning.path_planner import plan_path
 from drone_control.path_command import navigation
