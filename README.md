@@ -1,12 +1,27 @@
-# Tello Autonomous Navigation (Mapping, Path Planning,Drone Control and Object Tracking)
+# Tello Autonomous Navigation Pipeline
 
-Autonomous navigation and real-time visual object tracking pipeline for the DJI Tello drone using occupancy grid path planning and computer vision.
+From 2D arena maps to Tello flight commands and live visual target tracking.
 
 ## Contributors
-- **Jessie W** (Occupancy Grid Mapping)
+- **Jessie W** (Occupancy Grid Mapping, Benchmarks)
 - **Anna Zarubina** (Path Planning, Algorithms)
 - **Oshanda Fernando** (Drone Control, Navigation)
 - **Ganbat Selenge** (Object Tracking)
+
+## Project Structure
+
+```text
+tello/
+├── main.py                  # End-to-end navigation entrypoint
+├── requirements.txt         # Python dependencies
+├── mapping/                 # Occupancy grid loaders and obstacle inflation
+│   └── maps/                # Sample arena and maze maps
+├── path_planning/           # A*, Dijkstra, Greedy, Theta*, RRT, RRT*, and LOS smoothing
+├── drone_control/           # Tello SDK wrapper, waypoint transforms, and command generation
+├── object_tracking/         # Checkerboard detector and live/recorded tracking scripts
+├── simulation/              # DroneBlocks and SDK flight simulation scripts
+├── benchmarks/              # Benchmark runner (run_benchmarks.py) and summary report
+```
 
 ## Installation
 
@@ -19,7 +34,7 @@ pip install -r requirements.txt
 
 ## Occupancy Grid Mapping
 
-Converts 2D arena maps (`.json`, `.txt`, `.png`, `.py`) into `occupancy_grid` (`0` = free, `1` = obstacle), `start`, and `destination` (see [`mapping/README.md`](mapping/README.md)):
+Converts 2D arena maps (`.json`, `.txt`, `.png`/`.jpg`, `.py`) into `occupancy_grid` (`0` = free, `1` = obstacle), `start`, and `destination` (see [`mapping/README.md`](mapping/README.md)):
 
 ```python
 from mapping.mapping import load_map
@@ -37,37 +52,71 @@ gmap = gmap.inflate(10)
 occupancy_grid, start, destination = gmap
 ```
 
-## Checkerboard tracking
+## Path Planning
 
-Run from the `tello` directory.
+Plans a collision-free `(row, col)` waypoint list using 8-way A\* and line-of-sight smoothing (`path_planning/path_planner.py`):
 
-### Live tracking on the ground
+```python
+from path_planning.path_planner import plan_path
 
-On Windows PowerShell, install the dependencies while connected to the internet.
-
-```powershell
-Set-Location 'C:\Users\ganbat\Projects\robotics\tello'
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+waypoints = plan_path(occupancy_grid, start, destination, cell_size_cm=20.0)
 ```
 
-Power on the Tello, leave it on a stable surface, and connect your computer to its TELLO Wi-Fi. Close any other Tello program using UDP ports 8889 or 11111. Point the camera toward a checkerboard with 15 by 10 inner corners (16 by 11 squares).
+Additional planners (`dijkstra`, `greedy_best_first`, `theta_star`, `rrt_grid`, `rrt_star`) are available in `path_planning/path_planner_algorithms.py`.
 
-```powershell
-.\.venv\Scripts\python.exe -m object_tracking.tracking_ground --seconds 60
-```
+## Drone Control & Navigation
 
-This mode sends only `command`, `streamon`, and `streamoff`. It writes a CSV under `log/`. Press Esc or Q in the preview to stop early. Add `--headless` for terminal output and use Ctrl+C to stop.
-
-### Recorded video and tracking during flight
+Converts planned waypoints into Tello SDK `go x y 0 speed` commands (`drone_control/path_command.py`), previews the route, checks `battery?`, prompts for confirmation, and saves command logs under `log/`:
 
 ```bash
-python -m object_tracking.tracker ../Tello_video.mp4
-python drone_control_sdk_go.py --hover-seconds 10
+python main.py
 ```
 
-For live tracking, connect to the Tello Wi-Fi, keep UDP port 11111 free, then select a map and confirm the route. Either flight script tracks during the destination hover, saves logs under `log/`, and attempts to land when tracking ends.
+Or call `navigation(cell_size, starting_angle, speed, occupancy_grid, waypoints)` directly from `drone_control.path_command`.
 
-The preview shows pixel coordinates or `target lost`. Add `--headless` to print results in the terminal. Press Esc or Q to end the preview.
+## Checkerboard Tracking
 
-[Pipeline](tracking_figures/pipeline.png) | [Annotated frames](tracking_figures/detections.png) | [Coordinate trace](tracking_figures/centre_trace.png)
+Detects a **15 × 10 inner-corner** (16 × 11 square) checkerboard (`object_tracking/tracker.py`):
+
+```python
+from object_tracking.tracker import detect_board
+
+detection = detect_board(frame)  # returns (corners, (x, y)) or None
+```
+
+### 1. Video / Camera (`object_tracking.tracker`)
+Accepts a video path, camera index, or stream URL:
+
+```bash
+python -m object_tracking.tracker data/Tello_video.mp4
+python -m object_tracking.tracker 0 --headless
+```
+
+### 2. Live Ground Test (`object_tracking.tracking_ground`)
+Connect to `TELLO` Wi-Fi (UDP `8889`/`11111` free). Streams without taking off and logs to `log/`:
+
+```bash
+python -m object_tracking.tracking_ground --seconds 60
+```
+
+### 3. Flight Hover API (`object_tracking.tracking_flight`)
+`fly_and_track(commands, duration, headless)` handles `takeoff`, route execution, hover tracking, `land`, and CSV/command logging to `log/`.
+
+### Controls
+Press `Esc` or `Q` to quit the preview (`x`, `y` or `target lost`), or pass `--headless` for terminal output.
+
+**Visuals:** [Pipeline](tracking_figures/pipeline.png) · [Annotated frames](tracking_figures/detections.png) · [Coordinate trace](tracking_figures/centre_trace.png)
+
+## Benchmarks
+
+Run the benchmark suite across mapping, path planning, Tello command generation, and checkerboard tracking:
+
+```bash
+python benchmarks/run_benchmarks.py                    # Full pipeline (Task 1 + Task 2)
+python benchmarks/run_benchmarks.py --task 1           # Navigation only
+python benchmarks/run_benchmarks.py --task 2           # Checkerboard tracking only
+python benchmarks/run_benchmarks.py mapping/maps/example_arena.png # Selected map(s)
+```
+
+Results are saved to [`benchmarks/BENCHMARK_SUMMARY.md`](benchmarks/BENCHMARK_SUMMARY.md).
+
