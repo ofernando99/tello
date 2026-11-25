@@ -4,53 +4,71 @@ import time
 
 from drone_control.stats import Stats
 
-
 class Tello:
     def __init__(self):
         self.local_ip = ''
         self.local_port = 8889
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # socket for sending cmd
+        self.socket.bind((self.local_ip, self.local_port))
+
+        # thread for receiving cmd ack
+        self.receive_thread = threading.Thread(target=self._receive_thread)
+        self.receive_thread.daemon = True
+        self.receive_thread.start()
+
         self.tello_ip = '192.168.10.1'
         self.tello_port = 8889
         self.tello_adderss = (self.tello_ip, self.tello_port)
         self.log = []
-        self.MAX_TIME_OUT = 15.0
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            self.socket.bind((self.local_ip, self.local_port))
-        except OSError:
-            self.socket.close()
-            raise
-        self._lock = threading.Lock()
-        self._reply_unreliable = False
 
-    def send_command(self, command, timeout=None):
-        """Send one SDK command and return its reply, or None on timeout."""
-        with self._lock:
-            stat = Stats(command, len(self.log))
-            self.log.append(stat)
-            print(f"sending command: {command}")
-            self.socket.sendto(command.encode('utf-8'), self.tello_adderss)
-            if self._reply_unreliable:
-                # a late reply cannot be matched reliably after a timeout
-                return None
-            deadline = time.monotonic() + (self.MAX_TIME_OUT if timeout is None else timeout)
+        self.MAX_TIME_OUT = 15.0
+
+    def send_command(self, command):
+        """
+        Send a command to the ip address. Will be blocked until
+        the last command receives an 'OK'.
+        If the command fails (either b/c time out or error),
+        will try to resend the command
+        :param command: (str) the command to send
+        :param ip: (str) the ip of Tello
+        :return: The latest command response
+        """
+        self.log.append(Stats(command, len(self.log)))
+
+        self.socket.sendto(command.encode('utf-8'), self.tello_adderss)
+        print('sending command: %s to %s' % (command, self.tello_ip))
+
+        start = time.time()
+        while not self.log[-1].got_response():
+            now = time.time()
+            diff = now - start
+            if diff > self.MAX_TIME_OUT:
+                print('Max timeout exceeded... command %s' % command)
+                # TODO: is timeout considered failure or next command still get executed
+                # now, next one got executed
+                return
+        print('Done!!! sent command: %s to %s' % (command, self.tello_ip))
+
+    def _receive_thread(self):
+        """Listen to responses from the Tello.
+
+        Runs as a thread, sets self.response to whatever the Tello last returned.
+
+        """
+        while True:
             try:
-                while time.monotonic() < deadline:
-                    self.socket.settimeout(max(0.001, deadline - time.monotonic()))
-                    reply, address = self.socket.recvfrom(1024)
-                    if address == self.tello_adderss:
-                        stat.add_response(reply)
-                        return reply.decode('utf-8', errors='replace').strip()
-            except socket.timeout:
-                pass
-            except KeyboardInterrupt:
-                self._reply_unreliable = True
-                raise
-            self._reply_unreliable = True
-            return None
+                self.response, ip = self.socket.recvfrom(1024)
+                print('from %s: %s' % (ip, self.response))
+
+                self.log[-1].add_response(self.response)
+            except socket.error as exc:
+                print("Caught exception socket.error : %s" % exc)
 
     def on_close(self):
-        self.socket.close()
+        pass
+        # for ip in self.tello_ip_list:
+        #     self.socket.sendto('land'.encode('utf-8'), (ip, 8889))
+        # self.socket.close()
 
     def get_log(self):
         return self.log
