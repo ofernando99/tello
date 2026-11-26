@@ -120,9 +120,6 @@ def main():
     sim_key = input("Enter simulator key (visit : coding-sim.droneblocks.io) : ")
     # load map
     occupancy_grid, start, destination = load_map(map_path)
-    print(occupancy_grid)
-    print(start)
-    print(destination)
     # plan path
     path = plan_path(occupancy_grid, start, destination, cell_size)
 
